@@ -6,6 +6,7 @@ export function PhoneVerification({ slug, phone, verified, onVerified }: { slug:
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const codeRequested = Boolean(phone && sentTo && sentTo === phone);
   async function call(verify: boolean) {
     setBusy(true);
     setMessage("");
@@ -22,8 +23,8 @@ export function PhoneVerification({ slug, phone, verified, onVerified }: { slug:
   }
   return <div className="mt-3 rounded-xl bg-white/70 p-3 text-sm">
     {verified ? <p>Mobile number verified.</p> : <>
-      <button type="button" className="btn-ghost text-sm" disabled={busy || !phone} onClick={() => call(false)}>{busy ? "Please wait…" : sentTo === phone ? "Send a new code" : "Send verification code"}</button>
-      {sentTo === phone && <div className="mt-3">
+      <button type="button" className="btn-ghost text-sm" disabled={busy || !phone} onClick={() => call(false)}>{busy ? "Please wait…" : codeRequested ? "Send a new code" : "Send verification code"}</button>
+      {codeRequested && <div className="mt-3">
         <label className="label" htmlFor="phone-code">Text message code</label>
         <input id="phone-code" className="input" value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={10} />
         <button type="button" className="btn-ghost mt-2" disabled={busy || code.length < 6} onClick={() => call(true)}>Verify code</button>
