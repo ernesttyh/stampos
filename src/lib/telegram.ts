@@ -4,9 +4,9 @@ export function telegramConfigured() {
   return Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_USERNAME);
 }
 
-export function telegramDeepLink(customerId: string) {
-  // https://t.me/<bot>?start=<payload> — payload must be [A-Za-z0-9_-]{1,64}; uuids are fine.
-  return `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}?start=${customerId}`;
+export function telegramDeepLink(signedLinkToken: string) {
+  if (!/^[A-Za-z0-9_-]{44}$/.test(signedLinkToken)) throw new Error("Signed Telegram linking token required");
+  return `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}?start=${signedLinkToken}`;
 }
 
 export async function sendTelegram(chatId: number, text: string, url?: string) {

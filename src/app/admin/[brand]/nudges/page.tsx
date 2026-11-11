@@ -23,7 +23,7 @@ export default async function Nudges({ params }: { params: Promise<{ brand: stri
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold">Nudges</h1>
-      <p className="text-sm text-ink/60">Automatic nudges run on a schedule; campaigns go out when you send them. Only people who ticked marketing consent are contacted.</p>
+      <p className="text-sm text-ink/60">Automatic marketing reminders are off by default until end-to-end approval and explicit enablement. Campaigns process in resumable batches. Only people with current marketing consent are contacted. Sent counts mean provider acceptance, not confirmed delivery.</p>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         <div className="adm-card lg:col-span-2">
@@ -39,7 +39,7 @@ export default async function Nudges({ params }: { params: Promise<{ brand: stri
               </div>
             ))}
           </div>
-          <p className="mt-3 text-xs text-ink/50">Runs when your scheduler calls <code className="font-mono">/api/cron/nudges</code> (see README). Each person gets each nudge at most once per cool-down.</p>
+          <p className="mt-3 text-xs text-ink/50">When explicitly enabled, the scheduler calls <code className="font-mono">/api/cron/nudges</code>. At most one automatic marketing attempt per customer per Singapore day, including windows and creator reminders. Uncertain sends are paused for reconciliation, never automatically resent. Birthday rewards do not require marketing consent.</p>
         </div>
 
         <form action={createWindow.bind(null, slug)} className="adm-card space-y-2">
@@ -55,7 +55,7 @@ export default async function Nudges({ params }: { params: Promise<{ brand: stri
               <select name="outlet_id" className="adm-input"><option value="">All outlets</option>{((outlets ?? []) as Pick<Outlet, "id" | "name">[]).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select></div>
           </div>
           <button className="adm-btn-brand w-full">Schedule</button>
-          <p className="text-xs text-ink/50">Members get told automatically a few hours before it starts.</p>
+          <p className="text-xs text-ink/50">Eligible members may be notified when automatic reminders are explicitly enabled; daily limits and other reminders take priority.</p>
         </form>
       </div>
 
@@ -102,7 +102,7 @@ export default async function Nudges({ params }: { params: Promise<{ brand: stri
         <div className="adm-card lg:col-span-2">
           <p className="font-display font-bold">Campaigns</p>
           <table className="adm-table mt-2">
-            <thead><tr><th>Title</th><th>Who</th><th>Status</th><th>Reached</th><th>Sent</th><th></th></tr></thead>
+            <thead><tr><th>Title</th><th>Who</th><th>Status</th><th>API accepted / audience</th><th>Processed at</th><th></th></tr></thead>
             <tbody>
               {((campaigns ?? []) as Campaign[]).map((c) => (
                 <tr key={c.id}>

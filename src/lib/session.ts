@@ -1,74 +1,68 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-
-/**
- * Lightweight signed sessions for customers and staff (no Supabase Auth needed for them).
- * Admins use Supabase Auth — see admin-auth.ts.
- */
+import { sessionSecret } from "./auth-safety";
+import { supabaseAdmin } from "./supabase/admin";
 
 export type CustomerSession = { kind: "customer"; customerId: string; brandId: string; brandSlug: string };
-export type StaffSession = { kind: "staff"; staffId: string; brandId: string; brandSlug: string; outletId: string | null; name: string; role: "staff" | "manager" };
+export type StaffSession = { kind: "staff"; staffId: string; brandId: string; brandSlug: string; outletId: string | null; name: string; role: "staff" | "manager"; authVersion?: number };
 
-const CUSTOMER_COOKIE = "so_customer";
-const STAFF_COOKIE = "so_staff";
-const CUSTOMER_TTL_DAYS = 365;
-const STAFF_TTL_HOURS = 14;
+// v2 deliberately ignores ALL sessions issued by the old name-and-phone login.
+const CUSTOMER_COOKIE = "so_customer_v2";
+const STAFF_COOKIE = "so_staff_v2";
+const CUSTOMER_TTL = 30 * 86400;
+const STAFF_TTL = 8 * 3600;
+export const authCookieOptions = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/" };
 
-function secret() {
-  const s = process.env.SESSION_SECRET;
-  if (!s || s.length < 16) throw new Error("SESSION_SECRET must be set (16+ chars)");
-  return new TextEncoder().encode(s);
+export async function signAuthToken(purpose: string, payload: Record<string, unknown>, seconds: number) {
+  return new SignJWT({ ...payload, purpose, version: 2 }).setProtectedHeader({ alg: "HS256" })
+    .setIssuer("stampos").setAudience(purpose).setIssuedAt().setExpirationTime(`${seconds}s`)
+    .sign(new TextEncoder().encode(sessionSecret()));
 }
 
-async function sign(payload: Record<string, unknown>, expSeconds: number) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(Math.floor(Date.now() / 1000) + expSeconds)
-    .sign(secret());
-}
-
-async function verify<T>(token: string | undefined): Promise<T | null> {
+export async function verifyAuthToken<T>(purpose: string, token: string | undefined, maxAge: number): Promise<T | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
-    return payload as unknown as T;
-  } catch {
-    return null;
-  }
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(sessionSecret()), {
+      algorithms: ["HS256"], issuer: "stampos", audience: purpose, maxTokenAge: maxAge,
+      requiredClaims: ["exp", "iat"],
+    });
+    return payload.purpose === purpose && payload.version === 2 ? payload as unknown as T : null;
+  } catch { return null; }
 }
-
-const cookieBase = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-};
 
 export async function setCustomerSession(s: Omit<CustomerSession, "kind">) {
-  const token = await sign({ kind: "customer", ...s }, CUSTOMER_TTL_DAYS * 86400);
-  (await cookies()).set(CUSTOMER_COOKIE, token, { ...cookieBase, maxAge: CUSTOMER_TTL_DAYS * 86400 });
+  const token = await signAuthToken("customer-session", { ...s, kind: "customer" }, CUSTOMER_TTL);
+  (await cookies()).set(CUSTOMER_COOKIE, token, { ...authCookieOptions, maxAge: CUSTOMER_TTL });
 }
-
 export async function getCustomerSession(): Promise<CustomerSession | null> {
-  const s = await verify<CustomerSession>((await cookies()).get(CUSTOMER_COOKIE)?.value);
-  return s?.kind === "customer" ? s : null;
+  const s = await verifyAuthToken<CustomerSession>("customer-session", (await cookies()).get(CUSTOMER_COOKIE)?.value, CUSTOMER_TTL);
+  return s?.kind === "customer" && s.customerId && s.brandId && s.brandSlug ? s : null;
 }
-
 export async function clearCustomerSession() {
-  (await cookies()).set(CUSTOMER_COOKIE, "", { ...cookieBase, maxAge: 0 });
+  const jar = await cookies();
+  for (const name of [CUSTOMER_COOKIE, "so_customer"]) jar.set(name, "", { ...authCookieOptions, maxAge: 0 });
 }
 
 export async function setStaffSession(s: Omit<StaffSession, "kind">) {
-  const token = await sign({ kind: "staff", ...s }, STAFF_TTL_HOURS * 3600);
-  (await cookies()).set(STAFF_COOKIE, token, { ...cookieBase, maxAge: STAFF_TTL_HOURS * 3600 });
+  const { data, error } = await supabaseAdmin().from("staff").select("auth_version, active").eq("id", s.staffId).eq("brand_id", s.brandId).single();
+  if (error || !data?.active || !Number.isInteger(data.auth_version) || s.authVersion !== data.auth_version) throw new Error("Staff access unavailable");
+  const token = await signAuthToken("staff-session", { ...s, kind: "staff", authVersion: data.auth_version }, STAFF_TTL);
+  (await cookies()).set(STAFF_COOKIE, token, { ...authCookieOptions, maxAge: STAFF_TTL });
 }
-
 export async function getStaffSession(): Promise<StaffSession | null> {
-  const s = await verify<StaffSession>((await cookies()).get(STAFF_COOKIE)?.value);
-  return s?.kind === "staff" ? s : null;
+  const s = await verifyAuthToken<StaffSession>("staff-session", (await cookies()).get(STAFF_COOKIE)?.value, STAFF_TTL);
+  if (s?.kind !== "staff" || !s.staffId || !s.brandId || !s.outletId) return null;
+  try {
+    const db = supabaseAdmin();
+    const { data: row, error } = await db.from("staff").select("id,brand_id,outlet_id,name,role,active,auth_version").eq("id", s.staffId).eq("brand_id", s.brandId).maybeSingle();
+    if (error || !row?.active || row.auth_version !== s.authVersion || (row.outlet_id && row.outlet_id !== s.outletId) || !["staff", "manager"].includes(row.role)) return null;
+    const { data: outlet, error: outletError } = await db.from("outlets").select("id").eq("id", s.outletId).eq("brand_id", s.brandId).eq("active", true).maybeSingle();
+    const { data: brand, error: brandError } = await db.from("brands").select("slug").eq("id", s.brandId).maybeSingle();
+    if (outletError || !outlet || brandError || brand?.slug !== s.brandSlug) return null;
+    return { ...s, name: row.name, role: row.role };
+  } catch { return null; }
 }
-
 export async function clearStaffSession() {
-  (await cookies()).set(STAFF_COOKIE, "", { ...cookieBase, maxAge: 0 });
+  const jar = await cookies();
+  for (const name of [STAFF_COOKIE, "so_staff"]) jar.set(name, "", { ...authCookieOptions, maxAge: 0 });
 }

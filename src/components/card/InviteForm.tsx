@@ -1,17 +1,21 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneVerification } from "./PhoneVerification";
 
 export function InviteForm({ slug, code, deliverable, agreement }: { slug: string; code: string; deliverable: string; agreement: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [agree, setAgree] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!verified) { setError("Please verify your mobile number first."); return; }
     if (!agree) {
       setError("Please accept the creator agreement to continue.");
       return;
@@ -24,7 +28,7 @@ export function InviteForm({ slug, code, deliverable, agreement }: { slug: strin
       res = await fetch("/api/card/invite", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, code, name, phone }),
+        body: JSON.stringify({ slug, code, name, phone, marketingConsent, agreementAccepted: agree }),
       });
       json = await res.json().catch(() => ({}));
     } catch {
@@ -48,14 +52,19 @@ export function InviteForm({ slug, code, deliverable, agreement }: { slug: strin
       <label className="label mt-5" htmlFor="name">Your name</label>
       <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} required placeholder="As on your card" />
       <label className="label mt-4" htmlFor="phone">Mobile number</label>
-      <input id="phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" required placeholder="9123 4567" />
+      <input id="phone" className="input" value={phone} onChange={(e) => { setPhone(e.target.value); setVerified(false); }} inputMode="tel" required placeholder="9123 4567" />
+      <PhoneVerification key={phone} slug={slug} phone={phone} verified={verified} onVerified={() => setVerified(true)} />
 
       <label className="mt-5 flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-1 h-4 w-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
         <span>I accept the creator agreement above.</span>
       </label>
+      <label className="mt-3 flex items-start gap-3 text-sm">
+        <input type="checkbox" className="mt-1 h-4 w-4" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} />
+        <span>Send me offers and reminders (optional). Existing card preferences are kept.</span>
+      </label>
       {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <button className="btn-brand mt-5 w-full text-lg" disabled={busy}>{busy ? "Unlocking…" : "Accept and unlock my first bowl"}</button>
+      <button className="btn-brand mt-5 w-full text-lg" disabled={busy || !verified}>{busy ? "Unlocking…" : "Accept and unlock my first bowl"}</button>
     </form>
   );
 }

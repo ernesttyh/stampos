@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneVerification } from "./PhoneVerification";
 
 export function JoinForm({
   slug, brandName, pdpaText, refCode, birthdayEnabled,
@@ -9,12 +10,14 @@ export function JoinForm({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
-  const [consent, setConsent] = useState(true);
+  const [consent, setConsent] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!verified) { setError("Please verify your mobile number first."); return; }
     setBusy(true);
     setError(null);
     let res: Response | null = null;
@@ -43,7 +46,8 @@ export function JoinForm({
       <label className="label" htmlFor="name">Your name</label>
       <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required placeholder="What should we call you?" />
       <label className="label mt-4" htmlFor="phone">Mobile number</label>
-      <input id="phone" className="input" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" required placeholder="9123 4567" />
+      <input id="phone" className="input" value={phone} onChange={(e) => { setPhone(e.target.value); setVerified(false); }} inputMode="tel" autoComplete="tel" required placeholder="9123 4567" />
+      <PhoneVerification key={phone} slug={slug} phone={phone} verified={verified} onVerified={() => setVerified(true)} />
       {birthdayEnabled && (
         <>
           <label className="label mt-4" htmlFor="bday">Birthday <span className="text-ink/40 font-normal">(optional — we send a treat)</span></label>
@@ -56,10 +60,10 @@ export function JoinForm({
       </label>
       {pdpaText && <p className="mt-3 text-xs leading-relaxed text-ink/50">{pdpaText}</p>}
       {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <button className="btn-brand mt-5 w-full text-lg" disabled={busy}>
+      <button className="btn-brand mt-5 w-full text-lg" disabled={busy || !verified}>
         {busy ? "Making your card…" : "Get my card"}
       </button>
-      <p className="mt-3 text-center text-xs text-ink/50">Already have a card? Enter the same name and number to open it.</p>
+      <p className="mt-3 text-center text-xs text-ink/50">Already have a card? Verify the mobile number on your card to open it. Existing details and preferences are kept.</p>
     </form>
   );
 }

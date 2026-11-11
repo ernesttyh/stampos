@@ -2,32 +2,36 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendTelegram } from "@/lib/telegram";
 import { appUrl } from "@/lib/brand";
+import { escapeTelegramHtml, telegramTokenHash } from "@/lib/auth-safety";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Telegram bot webhook. The card shows a `t.me/<bot>?start=<customerId>` link; when the person taps
- * Start, Telegram sends `/start <customerId>` here and we link the chat to their card.
+ * Private chats only. Linking uses signed, expiring, single-use tokens created from an authenticated card.
  */
 export async function POST(req: Request) {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  if (expected && req.headers.get("x-telegram-bot-api-secret-token") !== expected) {
+  if (!expected || req.headers.get("x-telegram-bot-api-secret-token") !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const update = await req.json().catch(() => null);
   const msg = update?.message;
   const chatId: number | undefined = msg?.chat?.id;
   const text: string = msg?.text || "";
-  if (!chatId) return NextResponse.json({ ok: true });
+  if (!Number.isSafeInteger(chatId) || !chatId || chatId <= 0 || msg?.chat?.type !== "private") return NextResponse.json({ ok: true });
 
   const db = supabaseAdmin();
-  const m = /^[/]start +([0-9a-f-]{36})/i.exec(text);
+  const m = /^[/]start +([A-Za-z0-9_-]{44})$/.exec(text);
   if (m) {
-    const { data: c } = await db.from("customers").select("id, name, brand_id, brand:brands(name, slug)").eq("id", m[1]).maybeSingle();
+    const hash = telegramTokenHash(m[1]);
+    if (!hash) return NextResponse.json({ ok: true });
+    const { data: customerId, error: consumeError } = await db.rpc("consume_telegram_link", { p_hash: hash, p_chat_id: chatId });
+    if (consumeError) return NextResponse.json({ error: "Linking unavailable" }, { status: 503 });
+    if (!customerId) return NextResponse.json({ ok: true });
+    const { data: c } = await db.from("customers").select("id, name, brand_id, brand:brands(name, slug)").eq("id", customerId).maybeSingle();
     if (c) {
-      await db.from("customers").update({ telegram_chat_id: chatId }).eq("id", c.id);
       const brand = (c as unknown as { brand: { name: string; slug: string } }).brand;
-      await sendTelegram(chatId, `Linked! Hi ${c.name.split(" ")[0]} — I'll let you know when you're close to a reward at ${brand.name}, and on double-stamp days.`, appUrl(`/${brand.slug}`));
+      await sendTelegram(chatId, `Linked! Hi ${escapeTelegramHtml(c.name.split(" ")[0])} — your card at ${escapeTelegramHtml(brand.name)} is connected. Marketing reminders follow your card preferences.`, appUrl(`/${brand.slug}`));
       return NextResponse.json({ ok: true });
     }
   }

@@ -14,15 +14,14 @@ export async function POST(req: Request) {
     db.from("brands").select("*").eq("id", s.brandId).maybeSingle(),
   ]);
   if (!c || !b) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
-  // Guard against accidental double-tap: ignore a second staff stamp within 20 seconds
-  const { data: last } = await db.from("stamps").select("created_at").eq("customer_id", customerId).eq("source", "staff").order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (last && Date.now() - new Date(last.created_at).getTime() < 20_000) {
-    return NextResponse.json({ error: "Just stamped — wait a moment before stamping again" }, { status: 429 });
-  }
+  // The RPC locks the customer and checks the cooldown in the same transaction as credits.
+  const quantity = Number(qty);
+  if (!Number.isSafeInteger(quantity) || quantity < 1) return NextResponse.json({ error: "Quantity must be a positive whole number" }, { status: 400 });
   try {
-    const outcome = await stampCustomer({ brand: b as Brand, customer: c as Customer, qty: Number(qty) || 1, outletId: s.outletId, staffId: s.staffId });
+    const outcome = await stampCustomer({ brand: b as Brand, customer: c as Customer, qty: quantity, outletId: s.outletId, staffId: s.staffId });
     return NextResponse.json({ ok: true, ...outcome });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 400 });
+    const message = (e as Error).message;
+    return NextResponse.json({ error: message }, { status: message.startsWith("Just stamped") ? 429 : 400 });
   }
 }

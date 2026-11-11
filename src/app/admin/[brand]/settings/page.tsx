@@ -5,17 +5,20 @@ import type { Outlet, Staff } from "@/lib/types";
 
 export default async function Settings({ params }: { params: Promise<{ brand: string }> }) {
   const { brand: slug } = await params;
-  const { brand } = await requireBrand(slug);
+  const { brand, user } = await requireBrand(slug);
+  const canManage = user.isPlatformAdmin || user.brandRoles[brand.id] === "owner";
   const db = supabaseAdmin();
   const [{ data: outlets }, { data: staff }] = await Promise.all([
     db.from("outlets").select("*").eq("brand_id", brand.id).order("name"),
-    db.from("staff").select("*").eq("brand_id", brand.id).eq("active", true).order("name"),
+    db.from("staff").select("id, name, role, outlet_id").eq("brand_id", brand.id).eq("active", true).order("name"),
   ]);
   const os = (outlets ?? []) as Outlet[];
 
   return (
     <div>
       <h1 className="font-display text-3xl font-extrabold">Settings</h1>
+      {!canManage && <p className="mt-3 text-sm">Only a brand owner can change settings, outlets or staff access.</p>}
+      <fieldset disabled={!canManage} className="min-w-0 disabled:opacity-65">
 
       <form action={updateBrand.bind(null, slug)} className="adm-card mt-6 grid gap-3 md:grid-cols-2">
         <p className="font-display text-lg font-bold md:col-span-2">Programme</p>
@@ -73,13 +76,14 @@ export default async function Settings({ params }: { params: Promise<{ brand: st
           </ul>
           <form action={addStaff.bind(null, slug)} className="mt-3 grid grid-cols-2 gap-2">
             <input name="name" placeholder="Name" className="adm-input" required />
-            <input name="pin" placeholder="PIN (4–8 digits)" inputMode="numeric" pattern="[0-9]{4,8}" className="adm-input" required />
+            <input name="pin" type="password" autoComplete="new-password" placeholder="PIN (6–8 digits)" inputMode="numeric" pattern="[0-9]{6,8}" className="adm-input" required />
             <select name="role" className="adm-input"><option value="staff">Staff</option><option value="manager">Manager</option></select>
             <select name="outlet_id" className="adm-input"><option value="">Any outlet</option>{os.filter((o) => o.active).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
             <button className="adm-btn-ghost col-span-2">Add staff PIN</button>
           </form>
         </div>
       </div>
+      </fieldset>
     </div>
   );
 }

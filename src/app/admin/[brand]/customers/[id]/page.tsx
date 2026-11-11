@@ -6,10 +6,12 @@ import { prettyPhone } from "@/lib/phone";
 import { tierFor } from "@/lib/brand";
 import { manualStamp, saveCustomerNote, issueManualReward } from "@/app/admin/actions";
 import type { Customer, Reward, Stamp } from "@/lib/types";
+import { randomUUID } from "node:crypto";
 
 export default async function CustomerDetail({ params }: { params: Promise<{ brand: string; id: string }> }) {
   const { brand: slug, id } = await params;
-  const { brand } = await requireBrand(slug);
+  const { brand, user } = await requireBrand(slug);
+  const canWrite = user.isPlatformAdmin || ["owner", "manager"].includes(user.brandRoles[brand.id]);
   const db = supabaseAdmin();
   const { data: c } = await db.from("customers").select("*").eq("id", id).eq("brand_id", brand.id).maybeSingle();
   if (!c) notFound();
@@ -64,14 +66,17 @@ export default async function CustomerDetail({ params }: { params: Promise<{ bra
             {(notes ?? []).length === 0 && <li className="text-ink/50">None yet.</li>}
           </ul>
         </div>
-        <div className="space-y-4">
+        <fieldset disabled={!canWrite} className="min-w-0 space-y-4 disabled:opacity-60">
+          {!canWrite && <p className="text-sm">View-only access. Changes are disabled.</p>}
           <form action={manualStamp.bind(null, slug, cust.id)} className="adm-card space-y-2">
+            <input type="hidden" name="request_id" value={randomUUID()} />
             <p className="font-display font-bold">Add stamps manually</p>
             <input name="qty" type="number" min={1} max={20} defaultValue={1} className="adm-input" />
-            <input name="note" placeholder="Reason (shown in history)" className="adm-input" />
+            <input name="note" placeholder="Reason (shown in history)" required maxLength={120} className="adm-input" />
             <button className="adm-btn-brand w-full">Add</button>
           </form>
           <form action={issueManualReward.bind(null, slug, cust.id)} className="adm-card space-y-2">
+            <input type="hidden" name="request_id" value={randomUUID()} />
             <p className="font-display font-bold">Issue a reward</p>
             <input name="title" defaultValue={brand.reward_name} className="adm-input" />
             <label className="label">Valid for (days)</label>
@@ -89,7 +94,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ bra
             <p>Push: {cust.push_subscription ? "on" : "off"} · Telegram: {cust.telegram_chat_id ? "linked" : "—"} · Home screen: {cust.installed_at ? "yes" : "no"}</p>
             {cust.birthday && <p>Birthday: {cust.birthday}</p>}
           </div>
-        </div>
+        </fieldset>
       </div>
     </div>
   );

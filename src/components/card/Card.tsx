@@ -20,6 +20,7 @@ export function Card({ initial, initialTab }: { initial: CardPayload; initialTab
   const [confetti, setConfetti] = useState(false);
   const [showSpin, setShowSpin] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [telegramBusy, setTelegramBusy] = useState(false);
   const balanceRef = useRef(initial.customer.stamp_balance);
   const total = data.brand.stamps_per_reward;
 
@@ -227,15 +228,24 @@ export function Card({ initial, initialTab }: { initial: CardPayload; initialTab
                 }}
               />
               {data.telegramBot && !data.customer.telegram_chat_id && (
-                <a
-                  href={`https://t.me/${data.telegramBot}?start=${data.customer.id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block rounded-2xl bg-white/70 p-4"
+                <button
+                  type="button"
+                  disabled={telegramBusy}
+                  onClick={async () => {
+                    setTelegramBusy(true);
+                    try {
+                      const res = await fetch("/api/card/telegram-link", { method: "POST" });
+                      const json = await res.json();
+                      if (!res.ok || !json.url) throw new Error(json.error || "Could not link Telegram.");
+                      window.location.assign(json.url);
+                    } catch (e) { showToast(e instanceof Error ? e.message : "Could not link Telegram."); }
+                    finally { setTelegramBusy(false); }
+                  }}
+                  className="block w-full text-left rounded-2xl bg-white/70 p-4"
                 >
-                  <p className="font-display font-bold">Prefer Telegram?</p>
+                  <p className="font-display font-bold">{telegramBusy ? "Creating your link…" : "Prefer Telegram?"}</p>
                   <p className="text-sm text-ink/60">Tap to link your card and get reminders there instead.</p>
-                </a>
+                </button>
               )}
             </div>
           </>
