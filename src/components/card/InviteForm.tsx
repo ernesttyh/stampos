@@ -2,13 +2,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneVerification } from "./PhoneVerification";
+import { SingaporePhoneInput } from "./SingaporePhoneInput";
 
 export function InviteForm({ slug, code, deliverable, agreement }: { slug: string; code: string; deliverable: string; agreement: string }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [agree, setAgree] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+  const verified = verifiedPhone === `+65${phone}`;
   const [marketingConsent, setMarketingConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ export function InviteForm({ slug, code, deliverable, agreement }: { slug: strin
       res = await fetch("/api/card/invite", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, code, name, phone, marketingConsent, agreementAccepted: agree }),
+        body: JSON.stringify({ slug, code, name, phone: `+65${phone}`, marketingConsent, agreementAccepted: agree }),
       });
       json = await res.json().catch(() => ({}));
     } catch {
@@ -52,8 +54,9 @@ export function InviteForm({ slug, code, deliverable, agreement }: { slug: strin
       <label className="label mt-5" htmlFor="name">Your name</label>
       <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} required placeholder="As on your card" />
       <label className="label mt-4" htmlFor="phone">Mobile number</label>
-      <input id="phone" className="input" value={phone} onChange={(e) => { setPhone(e.target.value); setVerified(false); }} inputMode="tel" required placeholder="9123 4567" />
-      <PhoneVerification key={phone} slug={slug} phone={phone} verified={verified} onVerified={() => setVerified(true)} />
+      <SingaporePhoneInput value={phone} onChange={(value) => { setPhone(value); setVerifiedPhone(""); }} />
+      <p id="phone-help" className="mt-2 text-xs text-ink/60">Singapore mobile number — enter the 8 digits after +65.</p>
+      <PhoneVerification key={phone} slug={slug} phone={phone.length === 8 ? `+65${phone}` : ""} verified={verified} onVerified={(confirmedPhone) => setVerifiedPhone(confirmedPhone)} />
 
       <label className="mt-5 flex items-start gap-3 text-sm">
         <input type="checkbox" className="mt-1 h-4 w-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} />

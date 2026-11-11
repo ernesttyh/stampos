@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneVerification } from "./PhoneVerification";
+import { SingaporePhoneInput } from "./SingaporePhoneInput";
 
 export function JoinForm({
   slug, brandName, pdpaText, refCode, birthdayEnabled,
@@ -11,13 +12,21 @@ export function JoinForm({
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
   const [consent, setConsent] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const [verifiedPhone, setVerifiedPhone] = useState("");
+  const verified = verifiedPhone === `+65${phone}`;
+  const currentPhone = useRef(phone);
+  currentPhone.current = phone;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!verified) { setError("Please verify your mobile number first."); return; }
+    await openCard();
+  }
+
+  async function openCard() {
+    if (!name.trim()) { setError("Please enter your name above, then open your card."); return; }
     setBusy(true);
     setError(null);
     let res: Response | null = null;
@@ -26,7 +35,7 @@ export function JoinForm({
       res = await fetch("/api/card/signup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slug, name, phone, birthday: birthday || null, marketingConsent: consent, ref: refCode }),
+        body: JSON.stringify({ slug, name, phone: `+65${phone}`, birthday: birthday || null, marketingConsent: consent, ref: refCode }),
       });
       json = await res.json().catch(() => ({}));
     } catch {
@@ -46,8 +55,8 @@ export function JoinForm({
       <label className="label" htmlFor="name">Your name</label>
       <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required placeholder="What should we call you?" />
       <label className="label mt-4" htmlFor="phone">Mobile number</label>
-      <input id="phone" className="input" value={phone} onChange={(e) => { setPhone(e.target.value); setVerified(false); }} inputMode="tel" autoComplete="tel" required placeholder="9123 4567" />
-      <PhoneVerification key={phone} slug={slug} phone={phone} verified={verified} onVerified={() => setVerified(true)} />
+      <SingaporePhoneInput value={phone} onChange={(value) => { setPhone(value); setVerifiedPhone(""); }} />
+      <p id="phone-help" className="mt-2 text-xs text-ink/60">Singapore mobile number — enter the 8 digits after +65.</p>
       {birthdayEnabled && (
         <>
           <label className="label mt-4" htmlFor="bday">Birthday <span className="text-ink/40 font-normal">(optional — we send a treat)</span></label>
@@ -59,10 +68,12 @@ export function JoinForm({
         <span>Send me offers and reminders from {brandName} (you can switch this off any time).</span>
       </label>
       {pdpaText && <p className="mt-3 text-xs leading-relaxed text-ink/50">{pdpaText}</p>}
+      <PhoneVerification key={phone} slug={slug} phone={phone.length === 8 ? `+65${phone}` : ""} verified={verified} canVerify={Boolean(name.trim()) && !busy} verifyLabel="Verify and open my card" onVerified={async (confirmedPhone) => { if (confirmedPhone !== `+65${currentPhone.current}`) return; setVerifiedPhone(confirmedPhone); await openCard(); }} />
+      {!name.trim() && <p className="mt-2 text-xs text-ink/70">Enter your name above before opening your card.</p>}
       {error && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <button className="btn-brand mt-5 w-full text-lg" disabled={busy || !verified}>
-        {busy ? "Making your card…" : "Get my card"}
-      </button>
+      {verified && <button className="btn-brand mt-5 w-full text-lg" disabled={busy}>
+        {busy ? "Opening your card…" : "Open my card"}
+      </button>}
       <p className="mt-3 text-center text-xs text-ink/50">Already have a card? Verify the mobile number on your card to open it. Existing details and preferences are kept.</p>
     </form>
   );

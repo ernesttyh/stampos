@@ -14,3 +14,9 @@ export function prettyPhone(e164: string) {
   if (e164.startsWith("+65") && e164.length === 11) return `${e164.slice(3, 7)} ${e164.slice(7)}`;
   return e164;
 }
+
+/** Display only the national portion beside a fixed +65 prefix; accepts pasted full SG numbers. */
+export function singaporeLocalDigits(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.startsWith("0065") ? digits.slice(4) : digits.length > 8 && digits.startsWith("65") ? digits.slice(2) : digits;
+}
