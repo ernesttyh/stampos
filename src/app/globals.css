@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-rgb: 200 16 46;
+  --brand-dark-rgb: 150 12 35;
+  --accent: #f2b134;
+  --font-display: "Bricolage Grotesque";
+  --font-sans: "Inter";
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+body { @apply bg-cream text-ink font-sans antialiased; }
+
+/* The physical-card feel: bone paper with a faint grain */
+.card-paper {
+  background-color: #fbf4e8;
+  background-image: radial-gradient(rgba(31, 26, 23, 0.05) 0.6px, transparent 0.6px);
+  background-size: 6px 6px;
+}
+
+/* Stamp cell — a punched ring on the card */
+.stamp-cell {
+  aspect-ratio: 1 / 1;
+  border-radius: 9999px;
+  border: 2px dashed rgba(31, 26, 23, 0.18);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+.stamp-cell.filled { border-style: solid; border-color: rgb(var(--brand-rgb) / 0.25); }
+
+/* Wedge wheel for the spin game */
+.wheel {
+  border-radius: 9999px;
+  background: conic-gradient(
+    var(--accent) 0deg 45deg,
+    #fbf4e8 45deg 90deg,
+    rgb(var(--brand-rgb)) 90deg 135deg,
+    #fbf4e8 135deg 180deg,
+    rgb(var(--brand-rgb)) 180deg 225deg,
+    #fbf4e8 225deg 270deg,
+    rgb(var(--brand-rgb)) 270deg 315deg,
+    #fbf4e8 315deg 360deg
+  );
+}
+
+.btn { @apply inline-flex items-center justify-center rounded-full px-5 py-3 font-display font-semibold text-base transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100; }
+.btn-brand { @apply btn bg-brand text-white hover:bg-brand-dark; }
+.btn-ghost { @apply btn bg-white/90 text-ink border border-ink/10 hover:bg-white; }
+.btn-dark { @apply btn bg-ink text-cream hover:bg-black; }
+.input { @apply w-full rounded-2xl border border-ink/15 bg-white px-4 py-3 text-base outline-none focus:border-brand focus:ring-4 focus:ring-brand/15; }
+.label { @apply block text-sm font-medium text-ink/70 mb-1.5; }
+
+/* Admin */
+.adm-card { @apply rounded-2xl bg-white border border-ink/10 p-5; }
+.adm-table { @apply w-full text-sm; }
+.adm-table th { @apply text-left font-medium text-ink/60 py-2 border-b border-ink/10; }
+.adm-table td { @apply py-2.5 border-b border-ink/5 align-top; }
+.adm-input { @apply w-full rounded-xl border border-ink/15 bg-white px-3 py-2 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20; }
+.adm-btn { @apply inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-50; }
+.adm-btn-brand { @apply adm-btn bg-ink text-white hover:bg-black; }
+.adm-btn-ghost { @apply adm-btn border border-ink/15 bg-white hover:bg-cream; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
