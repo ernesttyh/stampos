@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneVerification } from "./PhoneVerification";
 import { SingaporePhoneInput } from "./SingaporePhoneInput";
+import { BirthdayInput } from "./BirthdayInput";
 
 export function JoinForm({
   slug, brandName, pdpaText, refCode, birthdayEnabled,
@@ -60,7 +61,7 @@ export function JoinForm({
       {birthdayEnabled && (
         <>
           <label className="label mt-4" htmlFor="bday">Birthday <span className="text-ink/40 font-normal">(optional — we send a treat)</span></label>
-          <input id="bday" className="input" type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} max={new Date().toISOString().slice(0, 10)} />
+          <BirthdayInput value={birthday} onChange={setBirthday} />
         </>
       )}
       <label className="mt-5 flex items-start gap-3 text-sm text-ink/80">
