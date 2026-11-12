@@ -22,7 +22,7 @@ export default async function Creators({ params }: { params: Promise<{ brand: st
       <h1 className="font-display text-3xl font-extrabold">Creators</h1>
       <p className="text-sm text-ink/60">Manage complimentary creator rewards and optional content-based invitations.</p>
       {!canWrite && <p className="mt-3 text-sm text-ink/60">Your account is view-only. Ask the brand owner to create or change rewards.</p>}
-      {canWrite && slug === "chengdu-bowl" && <div className="mt-6"><CreatorCreditForm slug={slug} requestId={randomUUID()} validDays={brand.reward_valid_days} /></div>}
+      {canWrite && <div className="mt-6"><CreatorCreditForm slug={slug} requestId={randomUUID()} validDays={brand.reward_valid_days} /></div>}
 
       <fieldset disabled={!canWrite} className="mt-6 grid min-w-0 gap-4 lg:grid-cols-3 disabled:opacity-75">
         <form action={createGrant.bind(null, slug)} className="adm-card space-y-2">

@@ -268,7 +268,6 @@ begin
   end if;
   select * into b from brands where id=p_brand_id;
   if not found then raise exception 'Brand not found'; end if;
-  if b.slug<>'chengdu-bowl' then raise exception 'Four-bowl creator launch offer is only available for Chengdu Bowl'; end if;
   if b.reward_valid_days<1 then raise exception 'Brand reward validity must be at least one day'; end if;
   -- Upsert acquires the same customer lock for all requests for this brand+phone.
   -- Never replace existing identity, birthday, marketing consent or opt-ins.

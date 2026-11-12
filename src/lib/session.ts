@@ -9,7 +9,7 @@ export type StaffSession = { kind: "staff"; staffId: string; brandId: string; br
 // v2 deliberately ignores ALL sessions issued by the old name-and-phone login.
 const CUSTOMER_COOKIE = "so_customer_v2";
 const STAFF_COOKIE = "so_staff_v2";
-const CUSTOMER_TTL = 30 * 86400;
+const CUSTOMER_TTL = 365 * 86400; // OTP is only asked when no card session exists on the device
 const STAFF_TTL = 8 * 3600;
 export const authCookieOptions = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/" };
 

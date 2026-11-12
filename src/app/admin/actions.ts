@@ -83,7 +83,7 @@ export async function toggleOutlet(slug: string, outletId: string, active: boole
 export async function addStaff(slug: string, fd: FormData) {
   const { brand } = await requireBrand(slug, "owner");
   const pin = str(fd, "pin");
-  if (!/^[0-9]{6,8}$/.test(pin) || /^(.)\1+$/.test(pin) || ["123456", "1234567", "12345678", "87654321", "654321"].includes(pin)) throw new Error("Choose a non-obvious PIN of 6–8 digits.");
+  if (!/^[0-9]{4,8}$/.test(pin)) throw new Error("PIN must be 4–8 digits.");
   const outlet = str(fd, "outlet_id");
   if (outlet) await ownOutlet(brand.id, outlet);
   checked(await supabaseAdmin().from("staff").insert({ brand_id: brand.id, name: requiredText(fd.get("name"), "Staff name"), pin_hash: await bcrypt.hash(pin, 10), role: str(fd, "role") === "manager" ? "manager" : "staff", outlet_id: outlet || null }), "add staff");
@@ -159,7 +159,6 @@ export type CreatorCreditState = { ok: boolean; message: string; customerId?: st
 export async function creditCreatorAccount(slug: string, _state: CreatorCreditState, fd: FormData): Promise<CreatorCreditState> {
   const { brand, user } = await requireBrand(slug, "write");
   try {
-    if (brand.slug !== "chengdu-bowl") throw new Error("This four-bowl offer is only available for Chengdu Bowl.");
     const phone = normalisePhone(str(fd, "phone"));
     if (!phone) throw new Error("Please enter a valid mobile number, including its country code.");
     const platform = str(fd, "platform");

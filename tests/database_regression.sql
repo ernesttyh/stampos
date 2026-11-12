@@ -49,7 +49,12 @@ begin
   perform pg_temp.must_fail(format('select admin_credit_creator(%L,%L,%L,%L,%L,%L,%L)',b,'+6590000003','Other','@v','instagram',outsider,gen_random_uuid()));
   perform pg_temp.must_fail(format('select admin_credit_creator(%L,%L,%L,%L,%L,%L,%L)',b,'+6590000003','Other','@v','instagram',actor,req));
   assert not exists(select 1 from customers where brand_id=b and phone='+6590000003');
-  perform pg_temp.must_fail(format('select admin_credit_creator(%L,%L,%L,%L,%L,%L,%L)',other_b,'+6590000002','Other Name','@other','instagram',platform_actor,gen_random_uuid()));
+  -- The offer works for every brand: a platform admin can credit the other brand, but a brand-b owner cannot.
+  perform pg_temp.must_fail(format('select admin_credit_creator(%L,%L,%L,%L,%L,%L,%L)',other_b,'+6590000002','Other Name','@other','instagram',actor,gen_random_uuid()));
+  result:=admin_credit_creator(other_b,'+6590000002','Other Name','@other','instagram',platform_actor,gen_random_uuid());
+  assert not (result->>'already_credited')::boolean;
+  assert (select count(*)=4 from rewards where grant_id=(result->>'grant_id')::uuid and brand_id=other_b and customer_id=other_customer);
+  assert (select count(*)=4 from rewards where grant_id=g); -- brand-b allocation untouched
   result:=admin_adjust_customer(other_b,other_customer,platform_actor,gen_random_uuid(),'stamps',1,'Platform audit note',null);
   assert (result->>'ok')::boolean;
   assert (select note='Platform audit note' from stamps where customer_id=other_customer and source='admin');

@@ -6,9 +6,9 @@ Multi-brand restaurant loyalty cards: customer mobile card, staff scanner and br
 
 The launch-hardening branch adds verified-phone customer access, current staff access checks, role enforcement, transactional/idempotent reward operations, audited creator phone allocations, conservative messaging retries and repeatable tests. **A passing build is not live launch approval.** See [`docs/LAUNCH.md`](docs/LAUNCH.md).
 
-### Creator accounts: four complimentary Chengdu Bowl bowls
+### Creator accounts: four complimentary bowls (any brand)
 
-1. Sign in as a platform admin or Chengdu Bowl owner/manager.
+1. Sign in as a platform admin or the brand's owner/manager.
 2. Open `/admin/chengdu-bowl/creators`.
 3. Under **Create creator account · 4 complimentary bowls**, enter name, mobile number, handle and platform.
 4. Submit once. The server creates/reuses the brand-specific phone account, tags it as a creator and issues four separate available rewards in one transaction.
@@ -31,7 +31,7 @@ Use a dedicated isolated test project first. Apply SQL migrations **in filename 
 
 On an existing installation, verify the definitions of the first two already-applied migrations; do not blindly reapply them or reseed data. Migration 0003 aborts on incompatible historical tenant relationships rather than rewriting records. Back up before approved production migrations.
 
-`supabase/seed.sql` is for a fresh test database only. Its publicly documented PINs must never be used for production. Create replacement staff credentials in Settings (6–8 non-obvious digits), deactivate seeded staff and verify rejection of their old sessions.
+`supabase/seed.sql` is for a fresh test database only. It seeds two staff PINs (`1234` counter, `8888` manager). PINs are 4–8 digits; the owner decides how simple they are. Staff can be deactivated in Settings, which immediately rejects their old sessions.
 
 ### Environment
 

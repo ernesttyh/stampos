@@ -15,6 +15,14 @@ function phoneProvider() {
     throw new Error("Phone verification is not configured. Please contact the restaurant.");
   }
   const provider = process.env.CUSTOMER_PHONE_OTP_PROVIDER ?? "supabase";
+  if (provider === "dev") {
+    // Fixed test code for preview/UAT deployments only. Never sends SMS and refuses to run in production.
+    const code = process.env.CUSTOMER_PHONE_OTP_DEV_CODE ?? "";
+    if (process.env.VERCEL_ENV === "production" || !/^\d{6}$/.test(code)) {
+      throw new Error("Phone verification is not configured. Please contact the restaurant.");
+    }
+    return { kind: "dev" as const, code };
+  }
   if (provider === "twilio_verify") {
     const config = twilioVerifyConfig();
     return { kind: "twilio_verify" as const, config, client: createTwilioVerify(config) };
@@ -48,9 +56,11 @@ export async function startPhoneChallenge(req: Request, slug: string, rawPhone: 
       return { error: "SMS verification is temporarily at capacity. Please try later or contact the restaurant.", status: 429 };
     }
   }
-  const sent = provider.kind === "twilio_verify"
-    ? await provider.client.send(phone)
-    : !(await provider.client.auth.signInWithOtp({ phone, options: { shouldCreateUser: true } })).error;
+  const sent = provider.kind === "dev"
+    ? true
+    : provider.kind === "twilio_verify"
+      ? await provider.client.send(phone)
+      : !(await provider.client.auth.signInWithOtp({ phone, options: { shouldCreateUser: true } })).error;
   if (!sent) return { error: "Could not confirm that a code was sent. Please wait before requesting another code, or contact the restaurant.", status: 400 };
   const jar = await cookies();
   jar.set(CHALLENGE, token, { ...authCookieOptions, maxAge: 600 });
@@ -71,7 +81,9 @@ export async function verifyPhoneChallenge(req: Request, slug: string, rawPhone:
     return { error: "Too many attempts. Please wait 10 minutes and request a new code.", status: 429 };
   }
   let verified = false;
-  if (provider.kind === "twilio_verify") {
+  if (provider.kind === "dev") {
+    verified = code === provider.code;
+  } else if (provider.kind === "twilio_verify") {
     verified = await provider.client.check(phone!, code);
   } else {
     const { data, error } = await provider.client.auth.verifyOtp({ phone: phone!, token: code, type: "sms" });

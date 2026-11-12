@@ -31,7 +31,3 @@ export function telegramTokenHash(token: string): string | null {
 export function escapeTelegramHtml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-
-export function seededPinBlocked(pin: string, production = process.env.NODE_ENV === "production") {
-  return production && ["1234", "8888"].includes(pin);
-}

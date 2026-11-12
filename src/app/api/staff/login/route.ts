@@ -5,7 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { setStaffSession } from "@/lib/session";
 import type { Staff } from "@/lib/types";
 import { authThrottle, requestAddress, sameOrigin } from "@/lib/auth-throttle";
-import { seededPinBlocked, sessionSecret } from "@/lib/auth-safety";
+import { sessionSecret } from "@/lib/auth-safety";
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return NextResponse.json({ error: "Please use the staff website." }, { status: 403 });
@@ -20,8 +20,6 @@ export async function POST(req: Request) {
   if (!await authThrottle(`staff:outlet:${brand.id}:${outletId}`, 10, 900) || !await authThrottle(`staff:ip:${requestAddress(req)}`, 30, 900)) {
     return NextResponse.json({ error: "Too many login attempts. Please wait 15 minutes." }, { status: 429 });
   }
-  if (seededPinBlocked(pin)) return NextResponse.json({ error: "Default PINs are disabled. Ask your manager to set a new PIN." }, { status: 401 });
-  if (process.env.NODE_ENV === "production" && !/^\d{6,8}$/.test(pin)) return NextResponse.json({ error: "A 6–8 digit staff PIN is required. Ask your manager to update your PIN." }, { status: 401 });
 
   const db = supabaseAdmin();
   const { data: outlet } = await db.from("outlets").select("id").eq("id", outletId).eq("brand_id", brand.id).eq("active", true).maybeSingle();

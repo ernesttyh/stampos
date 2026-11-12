@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
-import { sessionSecret, newTelegramToken, telegramTokenHash, hashAuthKey, seededPinBlocked, escapeTelegramHtml } from "../src/lib/auth-safety";
+import { sessionSecret, newTelegramToken, telegramTokenHash, hashAuthKey, escapeTelegramHtml } from "../src/lib/auth-safety";
 import { signAuthToken, verifyAuthToken } from "../src/lib/session";
 
 const strongSecret = "f5a8b7318a4dcfeb029d76442c673a3f41b00d53cba926e5";
@@ -35,9 +35,7 @@ test("rate keys hide phone numbers and differ by operation", () => {
   assert.notEqual(hashAuthKey("otp:+6591234567"), hashAuthKey("staff:+6591234567"));
 });
 
-test("public seeded PINs are blocked only in production", () => {
-  for (const pin of ["1234", "8888"]) { assert.equal(seededPinBlocked(pin, true), true); assert.equal(seededPinBlocked(pin, false), false); }
-  assert.equal(seededPinBlocked("725931", true), false);
+test("telegram html is escaped", () => {
   assert.equal(escapeTelegramHtml("<b>A&B</b>"), "&lt;b&gt;A&amp;B&lt;/b&gt;");
 });
 

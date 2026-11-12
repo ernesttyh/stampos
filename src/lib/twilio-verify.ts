@@ -46,14 +46,20 @@ export function createTwilioVerify(config: TwilioVerifyConfig, transport: typeof
           redirect: "error",
           cache: "no-store",
         });
-        if (!response.ok) return false;
+        if (!response.ok) {
+          // Operational diagnostics only: HTTP status + Twilio error code. Never the phone, token or body text.
+          const err = (await response.json().catch(() => null)) as { code?: unknown; status?: unknown } | null;
+          console.error(`[twilio-verify] ${resource} failed: http ${response.status} twilio_code=${err && typeof err.code === "number" ? err.code : "n/a"}`);
+          return false;
+        }
         const body: unknown = await response.json();
         if (!body || typeof body !== "object" || !("status" in body) || !("to" in body)
             || !("service_sid" in body) || body.service_sid !== config.serviceSid) return false;
         return body.status === expectedStatus && typeof body.to === "string"
           && /^\+?\d{8,15}$/.test(body.to) && normalisePhone(body.to) === phone;
-      } catch {
+      } catch (e) {
         // Sending may have succeeded despite a network failure. Never automatically retry.
+        console.error(`[twilio-verify] ${resource} transport error: ${e instanceof Error ? e.name : "unknown"}`);
         return false;
       }
     };

@@ -76,7 +76,7 @@ export default async function Settings({ params }: { params: Promise<{ brand: st
           </ul>
           <form action={addStaff.bind(null, slug)} className="mt-3 grid grid-cols-2 gap-2">
             <input name="name" placeholder="Name" className="adm-input" required />
-            <input name="pin" type="password" autoComplete="new-password" placeholder="PIN (6–8 digits)" inputMode="numeric" pattern="[0-9]{6,8}" className="adm-input" required />
+            <input name="pin" type="password" autoComplete="new-password" placeholder="PIN (4–8 digits)" inputMode="numeric" pattern="[0-9]{4,8}" className="adm-input" required />
             <select name="role" className="adm-input"><option value="staff">Staff</option><option value="manager">Manager</option></select>
             <select name="outlet_id" className="adm-input"><option value="">Any outlet</option>{os.filter((o) => o.active).map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
             <button className="adm-btn-ghost col-span-2">Add staff PIN</button>
